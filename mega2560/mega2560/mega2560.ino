@@ -140,8 +140,8 @@ StaticJsonDocument<1024> users;
 */
 String read_rfid;
 
-String ESPQueue_Queue[21]; // Array with commnads to be send
-int ESPQueue_Type[21] = {false,};
+String ESPQueue_Queue[10]; // Array with commnads to be send
+int ESPQueue_Type[10] = {false,};
 bool init_data = false;
 /*
    0=No response expected(Deprecated, DONT USE!), For more see documentation
@@ -162,7 +162,7 @@ boolean ESPQueue_Add(String command, int type) {
   if (type < 0 || type > 9) {
     return false;
   }
-  if (ESPQueue_Count == 20) {
+  if (ESPQueue_Count == 10) {
     printDebug("ERR: ESPQueue is full and will be deleted in order to continue! Its critical error and something is really bad!");
     for (int i = 0; i < 20; i++) {
       ESPQueue_Queue[ESPQueue_Count] = "";
@@ -202,7 +202,7 @@ void ESPQueue_Handle_Err(String msg = "")
   ESPQueue_Count--;
   ESPQueue_State = false;
   printDebug("ESPQueue_Waiting: " + (String)ESPQueue_Count);
-  recievedString="";
+  recievedString = "";
   delay(5000);
 }
 
@@ -215,8 +215,8 @@ void ESPQueue_Handle() {
   }
 
   /*char ch;
-  while (ESP.available())
-  {
+    while (ESP.available())
+    {
     ch = ESP.read();
     if ((char)ch == '\n')
     {
@@ -229,37 +229,44 @@ void ESPQueue_Handle() {
       break;
     }
     recievedString += (String)ch;
-  }*/
+    }*/
 
-  recievedString="";
+  recievedString = "";
   if (ESP.available()) {
-    
-    newLineFlag=false;
+
+    newLineFlag = false;
     DynamicJsonDocument doc(1024);
     //String recievedString = ESP.readStringUntil('\n');
     char ch;
-      do
+    unsigned long a_time,p_time;
+    p_time=millis();
+    do
+    {
+      if (ESP.available()) // TODO: Timeout
       {
-      if(ESP.available()) // TODO: Timeout
-      {
-        ch=ESP.read();
-        if(ch=='\n')
+        ch = ESP.read();
+        if (ch == '\n')
         {
           break;
         }
-        if(ch=='\r')
+        if (ch == '\r')
         {
           ESP.print('\r');
           ESP.flush();
           continue;
         }
-        recievedString+=(String)ch;
+        recievedString += (String)ch;
       }
       else
       {
+        a_time = millis();
+        if (a_time - p_time > 10000)
+        {
+          return;
+        }
         delay(100);
       }
-      }while(true);
+    } while (true);
 
     printDebug("RECEIVED ESP: " + recievedString);
     DeserializationError err = deserializeJson(doc, recievedString);
@@ -278,12 +285,12 @@ void ESPQueue_Handle() {
     }
 
     if (ESPQueue_State) {
-      if (millis() - ESPQueue_Timout > 10000) {
+      /*if (millis() - ESPQueue_Timout > 10000) {
         printDebug("ERR: ESPQueue timeout! Retrying...!");
         ESPQueue_Handle_Err();
         return;
 
-      }
+        }*/
       if (ESPQueue_Type[0] == 2) {
         if (obj["m"]["s"].as<String>() == "ok") {
           printDebug("RECEIVED STATUS: OK");
@@ -325,7 +332,7 @@ void ESPQueue_Handle() {
         printDebug("ESPQueue_Waiting: " + (String)ESPQueue_Count);
       }
     }
-    recievedString="";
+    recievedString = "";
   }
   if (ESPQueue_State == false && ESPQueue_Count != 0) {
 
@@ -595,13 +602,13 @@ void setup() {
   }
 
   printDebug("ESP SETUP: OK");
-  delay(2000);
+
 
   ESPQueue_Add("/api/station/get-users?id_station=" + (String)STATION_ID, RFID_RESPONSE);
 
   while (init_data == false) {
     ESPQueue_Handle();
-    delay(100);
+    delay(10);
   }
 
   printDebug("DATA SETUP: OK");
