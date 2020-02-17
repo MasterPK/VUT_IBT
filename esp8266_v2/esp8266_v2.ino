@@ -63,6 +63,11 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP("Krehlikovi", "axago240");
+  WiFiMulti.addAP("KRE_ESP", "1234test");
+
+  while (WiFiMulti.run() != WL_CONNECTED) {
+    delay(1000);
+  }
 
 }
 

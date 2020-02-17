@@ -9,7 +9,7 @@
 
 // USER SETTINGS
 #define STATION_ID 1
-String ip = "https://192.168.1.6";
+String ip = "https://192.168.137.130";
 
 
 // Determine state of system
@@ -591,7 +591,7 @@ void setup() {
   p_time = millis();
   while (input != "OK") {
     a_time = millis();
-    if (a_time - p_time > 5000)
+    if (a_time - p_time > 10000)
     {
       p_time = a_time;
       ESP_Send("C");
