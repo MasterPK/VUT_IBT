@@ -9,8 +9,8 @@
 
 // USER SETTINGS
 #define STATION_ID 1
-String ip = "https://192.168.137.130";
-
+//String ip = "https://192.168.137.130";
+String ip = "https://192.168.1.6";
 
 // Determine state of system
 String state = "00";
@@ -357,6 +357,9 @@ void ESPQueue_Handle() {
 */
 #define SS_PIN 10 // RC522 SS_PIN
 #define RST_PIN 9 // RC522 RST_PIN
+// SCK  D52
+// MOSI D51
+// MISO D50
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 void dump_byte_array(byte *buffer, byte bufferSize)
@@ -591,7 +594,7 @@ void setup() {
   p_time = millis();
   while (input != "OK") {
     a_time = millis();
-    if (a_time - p_time > 10000)
+    if (a_time - p_time > 20000)
     {
       p_time = a_time;
       ESP_Send("C");
