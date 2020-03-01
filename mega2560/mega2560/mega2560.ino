@@ -123,6 +123,8 @@ String Nextion_receive() { //returns generic
   }
 
 }
+
+
 /*
    END of Nextion HMI Section
 */
@@ -238,8 +240,8 @@ void ESPQueue_Handle() {
     DynamicJsonDocument doc(1024);
     //String recievedString = ESP.readStringUntil('\n');
     char ch;
-    unsigned long a_time,p_time;
-    p_time=millis();
+    unsigned long a_time, p_time;
+    p_time = millis();
     do
     {
       if (ESP.available()) // TODO: Timeout
@@ -305,20 +307,6 @@ void ESPQueue_Handle() {
         {
           deserializeJson(users, recievedString);
           init_data = true;
-          if (state == "A0")
-          {
-            state = "00";
-            Nextion_Send("page admin_menu");
-          }
-        }
-        else
-        {
-          /*if (state == "A0")
-            {
-            state = "EE";
-            Nextion_Send("page error");
-            printDebug("Sync of users failed!");
-            }*/
         }
         ESPQueue_State = false;
       }
@@ -425,6 +413,7 @@ void updateTemperatureHMI()
   int temp;
   if ((temp = getTemperature()) >= 0)
   {
+    Nextion_Send("intro.tempVar.txt=\"" + (String)temp + "\"");
     Nextion_Send("temp.txt=\"" + (String)temp + "\"");
   }
 
@@ -520,8 +509,13 @@ void bellSetup()
   */
   if (r1 == 2 || r2 == 2 || r3 == 2 || r4 == 2)
   {
-    Nextion_Send("vis i_wireless,0");
-    Nextion_Send("vis btn_zvonek,1");
+    //Nextion_Send("vis i_wireless,0");
+    //Nextion_Send("vis btn_zvonek,1");
+    Nextion_Send("intro.bell.val=1");
+  }
+  else
+  {
+    Nextion_Send("intro.bell.val=0");
   }
 }
 
@@ -549,6 +543,187 @@ bool checkHash(String string, String hash)
     return false;
   }
 
+}
+
+void NextionHandle()
+{
+  String txt = Nextion_receive();
+  if (txt == "")
+  {
+    return;
+  }
+
+  if (txt == "R1")
+  {
+    if (r1 == 0)
+    {
+      EEPROM.update(EEPROM_R1, 1);
+      r1 = 1;
+      Nextion_Send("b1.txt=\"DVERE\"");
+    }
+    else if (r1 == 1)
+    {
+      EEPROM.update(EEPROM_R1, 2);
+      r1 = 2;
+      Nextion_Send("b1.txt=\"ZVONEK\"");
+    }
+    else if (r1 == 2)
+    {
+      EEPROM.update(EEPROM_R1, 0);
+      r1 = 0;
+      Nextion_Send("b1.txt=\"-\"");
+    }
+  }
+  else if (txt == "R2")
+  {
+    if (r2 == 0)
+    {
+      EEPROM.update(EEPROM_R2, 1);
+      r2 = 1;
+      Nextion_Send("b2.txt=\"DVERE\"");
+    }
+    else if (r2 == 1)
+    {
+      EEPROM.update(EEPROM_R2, 2);
+      r2 = 2;
+      Nextion_Send("b2.txt=\"ZVONEK\"");
+    }
+    else if (r2 == 2)
+    {
+      EEPROM.update(EEPROM_R2, 0);
+      r2 = 0;
+      Nextion_Send("b2.txt=\"-\"");
+    }
+  }
+  else if (txt == "R3")
+  {
+    if (r3 == 0)
+    {
+      EEPROM.update(EEPROM_R3, 1);
+      r3 = 1;
+      Nextion_Send("b3.txt=\"DVERE\"");
+    }
+    else if (r3 == 1)
+    {
+      EEPROM.update(EEPROM_R3, 2);
+      r3 = 2;
+      Nextion_Send("b3.txt=\"ZVONEK\"");
+    }
+    else if (r3 == 2)
+    {
+      EEPROM.update(EEPROM_R3, 0);
+      r3 = 0;
+      Nextion_Send("b3.txt=\"-\"");
+    }
+  }
+  else if (txt == "R4")
+  {
+    if (r4 == 0)
+    {
+      EEPROM.update(EEPROM_R4, 1);
+      r4 = 1;
+      Nextion_Send("b4.txt=\"DVERE\"");
+    }
+    else if (r4 == 1)
+    {
+      EEPROM.update(EEPROM_R4, 2);
+      r4 = 2;
+      Nextion_Send("b4.txt=\"ZVONEK\"");
+    }
+    else if (r4 == 2)
+    {
+      EEPROM.update(EEPROM_R4, 0);
+      r4 = 0;
+      Nextion_Send("b4.txt=\"-\"");
+    }
+  }
+  else if (txt == "A0")
+  {
+    //Nextion_Send("page loading");
+    //Nextion_Send("b1.txt=\"...\"");
+    //Nextion_Send("tsw b1,0");
+    ESPQueue_Add("/api/station/get-users?id_station=" + (String)STATION_ID, RFID_RESPONSE);
+  }
+  else if (txt == "A1")
+  {
+
+    if (r1 == 0)
+    {
+      Nextion_Send("b1.txt=\"-\"");
+    }
+    else if (r1 == 1)
+    {
+      Nextion_Send("b1.txt=\"DVERE\"");
+    }
+    else if (r1 == 2)
+    {
+      Nextion_Send("b1.txt=\"ZVONEK\"");
+    }
+
+    if (r2 == 0)
+    {
+      Nextion_Send("b2.txt=\"-\"");
+    }
+    else if (r2 == 1)
+    {
+      Nextion_Send("b2.txt=\"DVERE\"");
+    }
+    else if (r2 == 2)
+    {
+      Nextion_Send("b2.txt=\"ZVONEK\"");
+    }
+
+    if (r3 == 0)
+    {
+      Nextion_Send("b3.txt=\"-\"");
+    }
+    else if (r3 == 1)
+    {
+      Nextion_Send("b3.txt=\"DVERE\"");
+    }
+    else if (r3 == 2)
+    {
+      Nextion_Send("b3.txt=\"ZVONEK\"");
+    }
+
+    if (r4 == 0)
+    {
+      Nextion_Send("b4.txt=\"-\"");
+    }
+    else if (r4 == 1)
+    {
+      Nextion_Send("b4.txt=\"DVERE\"");
+    }
+    else if (r4 == 2)
+    {
+      Nextion_Send("b4.txt=\"ZVONEK\"");
+    }
+  }
+  else if (txt == "A2")
+  {
+    delay(200);
+    bellSetup();
+    Nextion_Send("page intro");
+    
+    return;
+  }
+  else if (txt == "A3")
+  {
+    Nextion_Send("b4.txt=\"TODO\"");
+  }
+  else if (txt == "A4")
+  {
+    OpenDoors();
+  }
+  else if (txt == "Z")
+  {
+    zvonek();
+  }
+  else if (txt == "FF")
+  {
+    Nextion_Send("page intro");
+  }
+  bellSetup();
 }
 
 void setup() {
@@ -629,9 +804,10 @@ void setup() {
     ESPQueue_Add("/api/station/save-temp?id_temp_sensor=1&temp=" + (String)temp, GENERIC_RESPONSE);
   }
   printDebug("DHT11 SETUP: OK");
-
-  Nextion_Send("page intro");
+  
   bellSetup();
+  Nextion_Send("page intro");
+  
   updateTemperatureHMI();
   printDebug("SYSTEM READY!");
 }
@@ -645,6 +821,9 @@ void loop()
 
   // Main Handle of Queue
   ESPQueue_Handle();
+
+  // Nextion HMI Handle
+  NextionHandle();
 
   // Time procedures
   current_time = millis();
@@ -671,16 +850,6 @@ void loop()
     }
     prev_temperatureDatabase_time = current_time;
   };
-
-  String nextionMsg = Nextion_receive();
-
-  if (nextionMsg != "")
-  {
-    if (nextionMsg == "Z")
-    {
-      zvonek();
-    }
-  }
 
   // New card reading
   //dump_byte_array(mfrc522.uid.uidByte, mfrc522.uid.size);
@@ -727,203 +896,9 @@ void loop()
     {
       ESPQueue_Add("/api/station/save-access/?id_station=" + (String)STATION_ID + "&user_rfid=" + read_rfid + "&status=" + (String)0, GENERIC_RESPONSE);
       Nextion_Send("page access_no");
-      return;
     }
 
-    state = "00";
-    do
-    {
-      ESPQueue_Handle();
-      txt = Nextion_receive();
-      if (txt != "")
-      {
-        printDebug("HMI:" + txt);
 
-        if (txt[0] == 'S')
-        {
-          state = (String)txt[1] + (String)txt[2];
-          printDebug("State machine changed:" + state);
-          continue;
-        }
-
-        if (state == "A1")
-        {
-          if (txt == "R1")
-          {
-            if (r1 == 0)
-            {
-              EEPROM.update(EEPROM_R1, 1);
-              r1 = 1;
-              Nextion_Send("b1.txt=\"DVERE\"");
-            }
-            else if (r1 == 1)
-            {
-              EEPROM.update(EEPROM_R1, 2);
-              r1 = 2;
-              Nextion_Send("b1.txt=\"ZVONEK\"");
-            }
-            else if (r1 == 2)
-            {
-              EEPROM.update(EEPROM_R1, 0);
-              r1 = 0;
-              Nextion_Send("b1.txt=\"-\"");
-            }
-          }
-          if (txt == "R2")
-          {
-            if (r2 == 0)
-            {
-              EEPROM.update(EEPROM_R2, 1);
-              r2 = 1;
-              Nextion_Send("b2.txt=\"DVERE\"");
-            }
-            else if (r2 == 1)
-            {
-              EEPROM.update(EEPROM_R2, 2);
-              r2 = 2;
-              Nextion_Send("b2.txt=\"ZVONEK\"");
-            }
-            else if (r2 == 2)
-            {
-              EEPROM.update(EEPROM_R2, 0);
-              r2 = 0;
-              Nextion_Send("b2.txt=\"-\"");
-            }
-          }
-          if (txt == "R3")
-          {
-            if (r3 == 0)
-            {
-              EEPROM.update(EEPROM_R3, 1);
-              r3 = 1;
-              Nextion_Send("b3.txt=\"DVERE\"");
-            }
-            else if (r3 == 1)
-            {
-              EEPROM.update(EEPROM_R3, 2);
-              r3 = 2;
-              Nextion_Send("b3.txt=\"ZVONEK\"");
-            }
-            else if (r3 == 2)
-            {
-              EEPROM.update(EEPROM_R3, 0);
-              r3 = 0;
-              Nextion_Send("b3.txt=\"-\"");
-            }
-          }
-          if (txt == "R4")
-          {
-            if (r4 == 0)
-            {
-              EEPROM.update(EEPROM_R4, 1);
-              r4 = 1;
-              Nextion_Send("b4.txt=\"DVERE\"");
-            }
-            else if (r4 == 1)
-            {
-              EEPROM.update(EEPROM_R4, 2);
-              r4 = 2;
-              Nextion_Send("b4.txt=\"ZVONEK\"");
-            }
-            else if (r4 == 2)
-            {
-              EEPROM.update(EEPROM_R4, 0);
-              r4 = 0;
-              Nextion_Send("b4.txt=\"-\"");
-            }
-          }
-        }
-
-
-        if (state == "00")
-        {
-          if (txt == "A0")
-          {
-            state = txt;
-            Nextion_Send("page loading");
-            //Nextion_Send("b1.txt=\"...\"");
-            //Nextion_Send("tsw b1,0");
-            ESPQueue_Add("/api/station/get-users?id_station=" + (String)STATION_ID, RFID_RESPONSE);
-          }
-          else if (txt == "A1")
-          {
-
-            if (r1 == 0)
-            {
-              Nextion_Send("b1.txt=\"-\"");
-            }
-            else if (r1 == 1)
-            {
-              Nextion_Send("b1.txt=\"DVERE\"");
-            }
-            else if (r1 == 2)
-            {
-              Nextion_Send("b1.txt=\"ZVONEK\"");
-            }
-
-            if (r2 == 0)
-            {
-              Nextion_Send("b2.txt=\"-\"");
-            }
-            else if (r2 == 1)
-            {
-              Nextion_Send("b2.txt=\"DVERE\"");
-            }
-            else if (r2 == 2)
-            {
-              Nextion_Send("b2.txt=\"ZVONEK\"");
-            }
-
-            if (r3 == 0)
-            {
-              Nextion_Send("b3.txt=\"-\"");
-            }
-            else if (r3 == 1)
-            {
-              Nextion_Send("b3.txt=\"DVERE\"");
-            }
-            else if (r3 == 2)
-            {
-              Nextion_Send("b3.txt=\"ZVONEK\"");
-            }
-
-            if (r4 == 0)
-            {
-              Nextion_Send("b4.txt=\"-\"");
-            }
-            else if (r4 == 1)
-            {
-              Nextion_Send("b4.txt=\"DVERE\"");
-            }
-            else if (r4 == 2)
-            {
-              Nextion_Send("b4.txt=\"ZVONEK\"");
-            }
-
-            state = txt;
-            printDebug("State:" + state);
-          }
-          else if (txt == "A2")
-          {
-            delay(200);
-            Nextion_Send("page intro");
-            bellSetup();
-            return;
-          }
-          else if (txt == "A3")
-          {
-            Nextion_Send("b4.txt=\"TODO\"");
-          }
-          else if (txt == "A4")
-          {
-            OpenDoors();
-          }
-        }
-      }
-
-    }
-    while (txt != "FF");
-    bellSetup();
   }
   else if (check == 2)
   {
@@ -971,6 +946,6 @@ void loop()
     Nextion_Send("page access_no");
     delay(1000);
   }
-  bellSetup();
+  
 
 }
