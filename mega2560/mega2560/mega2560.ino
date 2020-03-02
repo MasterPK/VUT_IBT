@@ -9,8 +9,8 @@
 
 // USER SETTINGS
 #define STATION_ID 1
-//String ip = "https://192.168.137.130";
-String ip = "https://192.168.1.6";
+String ip = "https://192.168.137.163";
+//String ip = "https://192.168.1.6";
 
 // Determine state of system
 String state = "00";
