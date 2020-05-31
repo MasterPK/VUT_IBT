@@ -12,8 +12,9 @@
 
 // USER SETTINGS
 #define STATION_ID 1
+#define STATION_TOKEN "h17222VeMwugFvl7"
 //String ip = "https://192.168.137.163";
-String ip = "https://192.168.1.181";
+String ip = "https://192.168.1.159";
 
 // Determine state of system
 String state = "00";
@@ -328,8 +329,8 @@ void ESPQueue_Handle() {
   if (ESPQueue_State == false && ESPQueue_Count != 0) {
 
     printDebug("ESPQueue_Processing: " + ESPQueue_Queue[0]);
-    printDebug("ESP REQUEST:" + (String)ip + ESPQueue_Queue[0]+"&token=h17222VeMwugFvl7");
-    ESP_Send((String)ip + ESPQueue_Queue[0]+"&token=h17222VeMwugFvl7");
+    printDebug("ESP REQUEST:" + (String)ip + ESPQueue_Queue[0] + "&token="+STATION_TOKEN);
+    ESP_Send((String)ip + ESPQueue_Queue[0] + "&token="+STATION_TOKEN);
     ESPQueue_Timout = millis();
     ESPQueue_State = true;
   }
@@ -505,11 +506,13 @@ void zvonek()
   digitalWrite(RELAY4, HIGH);
 }
 
+/*
+   Show BELL if atleast one relay is set to BELL
+*/
+
 void bellSetup()
 {
-  /*
-     Show BELL if atleast one relay is set to BELL
-  */
+
   if (r1 == 2 || r2 == 2 || r3 == 2 || r4 == 2)
   {
     //Nextion_Send("vis i_wireless,0");
@@ -707,12 +710,49 @@ void NextionHandle()
     delay(200);
     bellSetup();
     Nextion_Send("page intro");
-    
+
     return;
   }
   else if (txt == "A3")
   {
-    Nextion_Send("b4.txt=\"TODO\"");
+    Nextion_Send("page register_rfid");
+    String txt = Nextion_receive();
+    while (true)
+    {
+
+      if ( mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
+        dump_byte_array(mfrc522.uid.uidByte, mfrc522.uid.size);
+        printDebug("RFID READ: " + read_rfid);
+        mfrc522.PICC_HaltA();
+        Nextion_Send("newRfid.txt=\""+read_rfid+"\"");
+      }
+
+      if (txt == "")
+      {
+        txt = Nextion_receive();
+        continue;
+      }
+
+      if (txt == "R1")
+      {
+        if(read_rfid!="")
+        {
+          ESPQueue_Add("/api/add-new-rfid/?id_station=" + (String)STATION_ID + "&rfid=" + read_rfid, GENERIC_RESPONSE);
+        }
+        Nextion_Send("page admin_menu");
+        break;
+      }
+
+      if (txt == "R2")
+      {
+        Nextion_Send("page admin_menu");
+        break;
+      }
+
+      txt = Nextion_receive();
+    }
+
+
   }
   else if (txt == "A4")
   {
@@ -807,10 +847,10 @@ void setup() {
     ESPQueue_Add("/api/save-temp?id_temp_sensor=1&temp=" + (String)temp, GENERIC_RESPONSE);
   }
   printDebug("DHT11 SETUP: OK");
-  
+
   bellSetup();
   Nextion_Send("page intro");
-  
+
   updateTemperatureHMI();
   printDebug("SYSTEM READY!");
 }
@@ -949,6 +989,6 @@ void loop()
     Nextion_Send("page access_no");
     delay(1000);
   }
-  
+
 
 }
