@@ -14,7 +14,7 @@
 #define STATION_ID 1
 #define STATION_TOKEN "h17222VeMwugFvl7"
 //String ip = "https://192.168.137.163";
-String ip = "https://192.168.1.159";
+String ip = "https://192.168.1.103";
 
 // Determine state of system
 String state = "00";
