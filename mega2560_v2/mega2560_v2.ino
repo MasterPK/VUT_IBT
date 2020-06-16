@@ -220,23 +220,6 @@ void ESPQueue_Handle() {
     return;
   }
 
-  /*char ch;
-    while (ESP.available())
-    {
-    ch = ESP.read();
-    if ((char)ch == '\n')
-    {
-      newLineFlag=true;
-      break;
-    }
-    if ((char)ch == '\r')
-    {
-      newLineFlag=true;
-      break;
-    }
-    recievedString += (String)ch;
-    }*/
-
   recievedString = "";
   if (ESP.available()) {
 
