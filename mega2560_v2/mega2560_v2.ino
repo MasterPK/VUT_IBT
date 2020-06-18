@@ -11,13 +11,9 @@
 #include "ESP.h"
 
 // USER SETTINGS
-#define STATION_ID 1
 #define STATION_TOKEN "h17222VeMwugFvl7"
-//String ip = "https://192.168.137.163";
-String ip = "https://192.168.1.103";
-
-// Determine state of system
-String state = "00";
+#define MAX_USERS 40
+#define IP "https://192.168.1.103"
 
 /*
    End of user definitions
@@ -138,8 +134,13 @@ String Nextion_receive() { //returns generic
 */
 
 #include <ArduinoJson.h>
-StaticJsonDocument<1024> users;
-
+struct user {
+  char rfid[9];
+  int pin;
+  byte perm;
+};
+struct user users[MAX_USERS];
+StaticJsonDocument<2100> doc;
 
 /*
    ESPQueue and data processing section
@@ -224,7 +225,7 @@ void ESPQueue_Handle() {
   if (ESP.available()) {
 
     newLineFlag = false;
-    DynamicJsonDocument doc(1024);
+    
     //String recievedString = ESP.readStringUntil('\n');
     char ch;
     unsigned long a_time, p_time;
@@ -259,6 +260,7 @@ void ESPQueue_Handle() {
 
     printDebug("RECEIVED ESP: " + recievedString);
     DeserializationError err = deserializeJson(doc, recievedString);
+    recievedString = "";
     if (err) {
       printDebug("deserializeJson() failed with code ");
       printDebug(err.c_str());
@@ -292,7 +294,23 @@ void ESPQueue_Handle() {
       } else if (ESPQueue_Type[0] == 3) {
         if (obj["m"]["s"].as<String>() == "ok")
         {
-          deserializeJson(users, recievedString);
+          for (int i = 0; i < MAX_USERS; i++)
+          {
+            memcpy(users[i].rfid,0,9);
+            users[i].pin=0;
+            users[i].perm=0;
+          }
+          JsonArray usersJson = obj["m"]["u"].as<JsonArray>();
+          for (int i = 0; i < obj["m"]["c"].as<int>(); i++)
+          {
+            
+            (usersJson[i][0].as<String>()).toCharArray(users[i].rfid,9);
+            users[i].perm=usersJson[i][1].as<int>();
+            if(users[i].perm>1)
+            {
+              users[i].pin=usersJson[i][2].as<int>();
+            }
+          }
           init_data = true;
         }
         ESPQueue_State = false;
@@ -312,8 +330,8 @@ void ESPQueue_Handle() {
   if (ESPQueue_State == false && ESPQueue_Count != 0) {
 
     printDebug("ESPQueue_Processing: " + ESPQueue_Queue[0]);
-    printDebug("ESP REQUEST:" + (String)ip + ESPQueue_Queue[0] + "&token="+STATION_TOKEN);
-    ESP_Send((String)ip + ESPQueue_Queue[0] + "&token="+STATION_TOKEN);
+    printDebug("ESP REQUEST:" + (String)IP + ESPQueue_Queue[0] + "&token=" + STATION_TOKEN);
+    ESP_Send((String)IP + ESPQueue_Queue[0] + "&token=" + STATION_TOKEN);
     ESPQueue_Timout = millis();
     ESPQueue_State = true;
   }
@@ -354,20 +372,15 @@ void dump_byte_array(byte *buffer, byte bufferSize)
    3: Admin mode with two-way
 */
 String pin;
-int CheckRFID(String rfid)
+int CheckRFID()
 {
-  JsonObject obj = users.as<JsonObject>()["m"];
-  pin = "";
-  for (int i = 0; i < obj["c"].as<String>().toInt(); i++)
+  for(int i = 0 ;i<MAX_USERS;i++)
   {
-    if (obj["u"][i]["r"].as<String>() == read_rfid)
-    {
-      int tmp = obj["u"][i]["p"].as<String>().toInt();
-      if (tmp == 2 || tmp == 3)
-      {
-        pin = obj["u"][i]["i"].as<String>();
+    if(strcmp(users[i].rfid,read_rfid.c_str())==0){
+      if(users[i].perm == 2 || users[i].perm == 3){
+        pin=users[i].pin;
       }
-      return obj["u"][i]["p"].as<String>().toInt();
+      return users[i].perm;
     }
   }
   return 0;
@@ -631,7 +644,7 @@ void NextionHandle()
     //Nextion_Send("page loading");
     //Nextion_Send("b1.txt=\"...\"");
     //Nextion_Send("tsw b1,0");
-    ESPQueue_Add("/api/get-users?id_station=" + (String)STATION_ID, RFID_RESPONSE);
+    ESPQueue_Add("/api/get-users?", RFID_RESPONSE);
   }
   else if (txt == "A1")
   {
@@ -707,7 +720,7 @@ void NextionHandle()
         dump_byte_array(mfrc522.uid.uidByte, mfrc522.uid.size);
         printDebug("RFID READ: " + read_rfid);
         mfrc522.PICC_HaltA();
-        Nextion_Send("newRfid.txt=\""+read_rfid+"\"");
+        Nextion_Send("newRfid.txt=\"" + read_rfid + "\"");
       }
 
       if (txt == "")
@@ -718,9 +731,9 @@ void NextionHandle()
 
       if (txt == "R1")
       {
-        if(read_rfid!="")
+        if (read_rfid != "")
         {
-          ESPQueue_Add("/api/add-new-rfid/?id_station=" + (String)STATION_ID + "&rfid=" + read_rfid, GENERIC_RESPONSE);
+          ESPQueue_Add((String)"/api/add-new-rfid/?" + "&rfid=" + read_rfid, GENERIC_RESPONSE);
         }
         Nextion_Send("page admin_menu");
         break;
@@ -754,7 +767,6 @@ void NextionHandle()
 
 void setup() {
 
-  state.reserve(2);
   if (DEBUG_SERIAL) {
     DebugPort.begin(BAUD_RATE);
   }
@@ -808,7 +820,7 @@ void setup() {
   printDebug("ESP SETUP: OK");
 
 
-  ESPQueue_Add("/api/get-users?id_station=" + (String)STATION_ID, RFID_RESPONSE);
+  ESPQueue_Add("/api/get-users?", RFID_RESPONSE);
 
   while (init_data == false) {
     ESPQueue_Handle();
@@ -858,7 +870,7 @@ void loop()
   if (current_time - prev_update_time > 600000) {
 
     prev_update_time = current_time;
-    ESPQueue_Add("/api/get-users?id_station=" + (String)STATION_ID, RFID_RESPONSE);
+    ESPQueue_Add("/api/get-users?", RFID_RESPONSE);
   };
 
   //Temp update on Nextion
@@ -890,7 +902,7 @@ void loop()
   printDebug("RFID READ: " + read_rfid);
   mfrc522.PICC_HaltA();
 
-  int check = CheckRFID(read_rfid);
+  int check = CheckRFID();
   if (check == 3)
   {
     printDebug("ACCESS: ADMIN");
@@ -904,7 +916,7 @@ void loop()
       current_time = millis();
       if ((current_time - prev_time) > 20000)
       {
-        ESPQueue_Add("/api/save-access/?id_station=" + (String)STATION_ID + "&user_rfid=" + read_rfid + "&status=" + (String)0, GENERIC_RESPONSE);
+        ESPQueue_Add((String)"/api/save-access/?" + "&user_rfid=" + read_rfid + "&status=" + (String)0, GENERIC_RESPONSE);
         Nextion_Send("page intro");
         return;
       }
@@ -915,12 +927,12 @@ void loop()
 
     if (pin == txt)
     {
-      ESPQueue_Add("/api/save-access/?id_station=" + (String)STATION_ID + "&user_rfid=" + read_rfid + "&status=" + (String)1, GENERIC_RESPONSE);
+      ESPQueue_Add((String)"/api/save-access/?" + "&user_rfid=" + read_rfid + "&status=" + (String)1, GENERIC_RESPONSE);
       Nextion_Send("page admin_menu");
     }
     else
     {
-      ESPQueue_Add("/api/save-access/?id_station=" + (String)STATION_ID + "&user_rfid=" + read_rfid + "&status=" + (String)0, GENERIC_RESPONSE);
+      ESPQueue_Add((String)"/api/save-access/?" + "&user_rfid=" + read_rfid + "&status=" + (String)0, GENERIC_RESPONSE);
       Nextion_Send("page access_no");
     }
 
@@ -939,7 +951,7 @@ void loop()
       current_time = millis();
       if ((current_time - prev_time) > 20000)
       {
-        ESPQueue_Add("/api/save-access/?id_station=" + (String)STATION_ID + "&user_rfid=" + read_rfid + "&status=" + (String)0, GENERIC_RESPONSE);
+        ESPQueue_Add((String)"/api/save-access/?" + "&user_rfid=" + read_rfid + "&status=" + (String)0, GENERIC_RESPONSE);
         Nextion_Send("page intro");
         return;
       }
@@ -948,27 +960,27 @@ void loop()
     while (txt == "");
     if (pin == txt)
     {
-      ESPQueue_Add("/api/save-access/?id_station=" + (String)STATION_ID + "&user_rfid=" + read_rfid + "&status=" + (String)1, GENERIC_RESPONSE);
+      ESPQueue_Add((String)"/api/save-access/?" + "&user_rfid=" + read_rfid + "&status=" + (String)1, GENERIC_RESPONSE);
       Nextion_Send("page access_yes");
       OpenDoors();
     }
     else
     {
-      ESPQueue_Add("/api/save-access/?id_station=" + (String)STATION_ID + "&user_rfid=" + read_rfid + "&status=" + (String)0, GENERIC_RESPONSE);
+      ESPQueue_Add((String)"/api/save-access/?" + "&user_rfid=" + read_rfid + "&status=" + (String)0, GENERIC_RESPONSE);
       Nextion_Send("page access_no");
     }
   }
   else if (check == 1)
   {
     printDebug("ACCESS: YES");
-    ESPQueue_Add("/api/save-access/?id_station=" + (String)STATION_ID + "&user_rfid=" + read_rfid + "&status=" + (String)check, GENERIC_RESPONSE);
+    ESPQueue_Add((String)"/api/save-access/?" + "&user_rfid=" + read_rfid + "&status=" + (String)check, GENERIC_RESPONSE);
     Nextion_Send("page access_yes");
     OpenDoors();
   }
   else
   {
     printDebug("ACCESS: NO");
-    ESPQueue_Add("/api/save-access/?id_station=" + (String)STATION_ID + "&user_rfid=" + read_rfid + "&status=" + (String)check, GENERIC_RESPONSE);
+    ESPQueue_Add((String)"/api/save-access/?" + "&user_rfid=" + read_rfid + "&status=" + (String)check, GENERIC_RESPONSE);
     Nextion_Send("page access_no");
     delay(1000);
   }
