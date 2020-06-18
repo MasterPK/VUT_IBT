@@ -133,6 +133,10 @@ String Nextion_receive() { //returns generic
    JSON
 */
 
+/*
+ * Data storage
+ */
+
 #include <ArduinoJson.h>
 struct user {
   char rfid[9];
