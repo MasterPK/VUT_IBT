@@ -1,14 +1,7 @@
 /*
-   Main software for MEGA2560
-   Created by Petr Krehlik
+   Main program for MEGA2560
+   Author: Petr Křehlík
 */
-
-/*
-   User definitions
-*/
-
-//ESP library
-#include "ESP.h"
 
 // USER SETTINGS
 #define STATION_TOKEN "h17222VeMwugFvl7"
@@ -515,8 +508,6 @@ void bellSetup()
 
   if (r1 == 2 || r2 == 2 || r3 == 2 || r4 == 2)
   {
-    //Nextion_Send("vis i_wireless,0");
-    //Nextion_Send("vis btn_zvonek,1");
     Nextion_Send("intro.bell.val=1");
   }
   else
