@@ -7,11 +7,13 @@
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
-
+#include <ESP8266WebServer.h>
 #include <ESP8266HTTPClient.h>
 
 #include <WiFiClientSecureBearSSL.h>
 ESP8266WiFiMulti WiFiMulti;
+
+ESP8266WebServer server(80);
 
 void ESP_Send(String message)
 {
@@ -49,6 +51,22 @@ void ESP_Send(String message)
 
 }
 
+void handleNotFound() {
+  server.send(404, "text/plain", "404: Not found");
+}
+
+void handleOpen() {
+
+  if ( ! server.hasArg("userRfid") || ! server.hasArg("stationToken")) {
+    server.send(400, "text/plain", "400: Bad request");
+    return;
+  }
+
+  ESP_Send("OPEN:" + server.arg("userRfid") + "," + server.arg("stationToken"));
+
+  server.send(200, "application/json", "{\"status\":\"ok\"}");
+}
+
 void setup() {
 
   Serial.begin(115200);
@@ -58,11 +76,15 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP("Krehlikovi", "axago240");
-  WiFiMulti.addAP("KRE_ESP", "1234test");
 
   while (WiFiMulti.run() != WL_CONNECTED) {
     delay(1000);
   }
+
+  server.on("/open", HTTP_GET, handleOpen);
+  server.onNotFound(handleNotFound);
+
+  server.begin();
 
 }
 
@@ -91,6 +113,9 @@ void loop() {
 
     if (recvStr == "C") {
       ESP_Send("OK");
+    }
+    else if (recvStr == "IP") {
+      Serial.println(WiFi.localIP());
     } else {
       if ((WiFiMulti.run() == WL_CONNECTED)) {
         std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
@@ -107,12 +132,13 @@ void loop() {
               String payload = https.getString();
               ESP_Send(payload);
             }
-          } 
+          }
 
           https.end();
-        } 
+        }
       }
     }
   }
   delay(100);
+  server.handleClient();
 }

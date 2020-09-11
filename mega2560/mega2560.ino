@@ -6,7 +6,7 @@
 // USER SETTINGS
 #define STATION_TOKEN "h17222VeMwugFvl7"
 #define MAX_USERS 40
-#define IP "https://192.168.1.103"
+#define IP "https://192.168.1.166"
 
 /*
    End of user definitions
@@ -122,9 +122,7 @@ String Nextion_receive() { //returns generic
    END of Nextion HMI Section
 */
 
-/*
-   JSON
-*/
+
 
 /*
  * Data storage
@@ -143,6 +141,25 @@ StaticJsonDocument<2100> doc;
    ESPQueue and data processing section
 */
 String read_rfid;
+
+void handleRemoteOpen(String msg){
+  int first = msg.indexOf(":");
+  int second = msg.indexOf(",");
+  
+  if(strcmp(msg.substring(second+1).c_str(),STATION_TOKEN)!=0)
+  {
+    printDebug("Station token: NO MATCH");
+    return;
+  }
+  read_rfid=msg.substring(first+1,second);
+  if(CheckRFID()==0)
+  {
+    printDebug("User RFID: NO MATCH");
+    return;
+  }
+  printDebug("REMOTE OPEN: OK");
+  OpenDoors();
+}
 
 String ESPQueue_Queue[10]; // Array with commnads to be send
 int ESPQueue_Type[10] = {false,};
@@ -256,6 +273,12 @@ void ESPQueue_Handle() {
     } while (true);
 
     printDebug("RECEIVED ESP: " + recievedString);
+    if(recievedString.substring(0,4)=="OPEN"){
+      handleRemoteOpen(recievedString);
+      return;
+    }
+
+    
     DeserializationError err = deserializeJson(doc, recievedString);
     recievedString = "";
     if (err) {
