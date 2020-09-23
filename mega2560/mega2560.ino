@@ -6,7 +6,7 @@
 // USER SETTINGS
 #define STATION_TOKEN "h17222VeMwugFvl7"
 #define MAX_USERS 40
-#define IP "https://192.168.1.166"
+#define IP "https://192.168.1.102"
 
 /*
    End of user definitions
@@ -125,8 +125,8 @@ String Nextion_receive() { //returns generic
 
 
 /*
- * Data storage
- */
+   Data storage
+*/
 
 #include <ArduinoJson.h>
 struct user {
@@ -142,17 +142,17 @@ StaticJsonDocument<2100> doc;
 */
 String read_rfid;
 
-void handleRemoteOpen(String msg){
+void handleRemoteOpen(String msg) {
   int first = msg.indexOf(":");
   int second = msg.indexOf(",");
-  
-  if(strcmp(msg.substring(second+1).c_str(),STATION_TOKEN)!=0)
+
+  if (strcmp(msg.substring(second + 1).c_str(), STATION_TOKEN) != 0)
   {
     printDebug("Station token: NO MATCH");
     return;
   }
-  read_rfid=msg.substring(first+1,second);
-  if(CheckRFID()==0)
+  read_rfid = msg.substring(first + 1, second);
+  if (CheckRFID() == 0)
   {
     printDebug("User RFID: NO MATCH");
     return;
@@ -180,7 +180,7 @@ boolean ESPQueue_ERR = false;
 
 boolean ESPQueue_Add(String command, int type) {
 
-  if (type < 0 || type > 9) {
+  if (type < 1 || type > 3) {
     return false;
   }
   if (ESPQueue_Count == 10) {
@@ -239,7 +239,7 @@ void ESPQueue_Handle() {
   if (ESP.available()) {
 
     newLineFlag = false;
-    
+
     //String recievedString = ESP.readStringUntil('\n');
     char ch;
     unsigned long a_time, p_time;
@@ -273,12 +273,12 @@ void ESPQueue_Handle() {
     } while (true);
 
     printDebug("RECEIVED ESP: " + recievedString);
-    if(recievedString.substring(0,4)=="OPEN"){
+    if (recievedString.substring(0, 4) == "OPEN") {
       handleRemoteOpen(recievedString);
       return;
     }
 
-    
+
     DeserializationError err = deserializeJson(doc, recievedString);
     recievedString = "";
     if (err) {
@@ -316,19 +316,19 @@ void ESPQueue_Handle() {
         {
           for (int i = 0; i < MAX_USERS; i++)
           {
-            memcpy(users[i].rfid,0,9);
-            users[i].pin=0;
-            users[i].perm=0;
+            memcpy(users[i].rfid, 0, 9);
+            users[i].pin = 0;
+            users[i].perm = 0;
           }
           JsonArray usersJson = obj["m"]["u"].as<JsonArray>();
           for (int i = 0; i < obj["m"]["c"].as<int>(); i++)
           {
-            
-            (usersJson[i][0].as<String>()).toCharArray(users[i].rfid,9);
-            users[i].perm=usersJson[i][1].as<int>();
-            if(users[i].perm>1)
+
+            (usersJson[i][0].as<String>()).toCharArray(users[i].rfid, 9);
+            users[i].perm = usersJson[i][1].as<int>();
+            if (users[i].perm > 1)
             {
-              users[i].pin=usersJson[i][2].as<int>();
+              users[i].pin = usersJson[i][2].as<int>();
             }
           }
           init_data = true;
@@ -394,11 +394,11 @@ void dump_byte_array(byte *buffer, byte bufferSize)
 String pin;
 int CheckRFID()
 {
-  for(int i = 0 ;i<MAX_USERS;i++)
+  for (int i = 0 ; i < MAX_USERS; i++)
   {
-    if(strcmp(users[i].rfid,read_rfid.c_str())==0){
-      if(users[i].perm == 2 || users[i].perm == 3){
-        pin=users[i].pin;
+    if (strcmp(users[i].rfid, read_rfid.c_str()) == 0) {
+      if (users[i].perm == 2 || users[i].perm == 3) {
+        pin = users[i].pin;
       }
       return users[i].perm;
     }
@@ -834,6 +834,26 @@ void setup() {
       input = ESP.readStringUntil('\n');
     }
   }
+
+  input = "";
+  ESP_Send("IP");
+
+  p_time = millis();
+  while (input == "") {
+    a_time = millis();
+    if (a_time - p_time > 20000)
+    {
+      p_time = a_time;
+      ESP_Send("IP");
+    }
+    if (ESP.available() > 0) {
+      input = ESP.readStringUntil('\n');
+    }
+  }
+
+  input.trim();
+
+  ESPQueue_Add("/api/set-station-ip?ip="+input, GENERIC_RESPONSE);
 
   printDebug("ESP SETUP: OK");
 
